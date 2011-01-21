@@ -1,0 +1,582 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+#################################################
+# Copyright (C) 2008-2011, vitki.net
+# Hallock
+# FDI for HAL
+# $Id$
+#
+-->
+
+<!DOCTYPE deviceinfo SYSTEM "file:/usr/share/hal/fdi/fdi.dtd">
+
+<deviceinfo version="0.2">
+<device>
+
+	<!--
+	==== helpers ====
+	-->
+
+	<!-- determine distribution skin on start-up (system.kernel.hwguard.skin) -->
+
+	<match key="info.udi" string="/org/freedesktop/Hal/devices/computer">
+		<append key="info.callouts.add" type="strlist">hal-addon-custom-skin</append>
+	</match>
+
+	<!-- match whether we are UT -->
+
+	<match key="/org/freedesktop/Hal/devices/computer:hwguard.skin" exists="true">
+		<merge key="/org/freedesktop/Hal/devices/computer:hwguard.is_terminal" type="bool">false</merge>
+		<match key="/org/freedesktop/Hal/devices/computer:hwguard.skin" string="ut">
+			<merge key="/org/freedesktop/Hal/devices/computer:hwguard.is_terminal" type="bool">true</merge>
+		</match>
+		<!--match key="/org/freedesktop/Hal/devices/computer:hwguard.skin" string="tk">
+			<merge key="/org/freedesktop/Hal/devices/computer:hwguard.is_terminal" type="bool">true</merge>
+		</match-->
+	</match>
+
+	<!-- tell internal from detachable data/disk volumes -->
+
+	<match key="info.capabilities" contains="storage">
+		<merge key="hwguard.internal" type="bool">true</merge>
+
+		<match key="storage.hotpluggable" bool="true">
+			<merge key="hwguard.internal" type="bool">false</merge>
+		</match>
+		<match key="storage.removable" bool="true">
+			<merge key="hwguard.internal" type="bool">false</merge>
+		</match>
+		<match key="storage.bus" string="usb">
+			<merge key="hwguard.internal" type="bool">false</merge>
+		</match>
+
+		<match key="storage.bus" string="ide">
+			<merge key="hwguard.internal" type="bool">false</merge>
+		</match>
+		<match key="storage.bus" string="sata">
+			<merge key="hwguard.internal" type="bool">true</merge>
+		</match>
+		<match key="storage.bus" string="platform">
+			<merge key="hwguard.internal" type="bool">true</merge>
+		</match>
+
+		<match key="storage.drive_type" string="cdrom">
+			<merge key="hwguard.internal" type="bool">false</merge>
+		</match>
+		<match key="storage.drive_type" string="floppy">
+			<merge key="hwguard.internal" type="bool">false</merge>
+		</match>
+	</match>
+
+	<match key="info.capabilities" contains="volume">
+		<merge key="hwguard.detachable" type="bool">false</merge>
+		<match key="@info.parent:hwguard.internal" bool="false">
+			<merge key="hwguard.detachable" type="bool">true</merge>
+		</match>
+		<match key="@info.parent:hwguard.internal" bool="true">
+			<merge key="hwguard.detachable" type="bool">false</merge>
+		</match>
+	</match>
+
+	<!-- gather information about optical drives -->
+
+	<match key="info.capabilities" contains="storage.cdrom">
+		<merge key="hwguard.file" type="copy_property">block.device</merge>
+		<merge key="hwguard.drive_can_burn" type="bool">false</merge>
+
+		<match key="storage.cdrom.cdr" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.cdrw" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+
+		<match key="storage.cdrom.dvdr" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.dvdrw" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.dvdram" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.dvdplusr" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.dvdplusrw" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.dvdplusrwdl" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.dvdplusrdl" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+
+		<match key="storage.cdrom.bdr" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.bdre" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.hddvdr" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+		<match key="storage.cdrom.hddvdrw" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+		</match>
+
+		<match key="storage.cdrom.mrw_w" bool="true">
+			<merge key="hwguard.drive_can_burn" type="bool">true</merge>
+			<!-- VMware use to claim it can burn Mount Rainier. Is this true ? -->
+			<match key="storage.model" prefix_ncase="vmware">
+				<match key="storage.cdrom.write_speed" int="0">
+					<merge key="hwguard.drive_can_burn" type="bool">false</merge>
+				</match>
+			</match>
+		</match>
+	</match>
+
+	<!-- gather information about optical discs -->
+
+	<match key="info.capabilities" contains="volume.disc">
+		<merge key="hwguard.disc_can_burn" type="bool">false</merge>
+
+		<match key="volume.disc.is_blank" bool="true">
+			<merge key="hwguard.disc_can_burn" type="bool">true</merge>
+		</match>
+
+		<match key="volume.disc.is_appendable" bool="true">
+			<merge key="hwguard.disc_can_burn" type="bool">true</merge>
+		</match>
+
+		<match key="volume.disc.is_rewritable" bool="true">
+			<merge key="hwguard.disc_can_burn" type="bool">true</merge>
+		</match>
+	</match>
+
+	<match key="info.capabilities" contains="volume.disc">
+		<match key="@info.parent:hwguard.drive_can_burn" exists="true">
+			<merge key="hwguard.drive_can_burn"
+					type="copy_property">@info.parent:hwguard.drive_can_burn</merge>
+		</match>
+	</match>
+
+	<!--
+	==== groups:
+	====	lhw_wr_plugvol lhw_rd_plugvol lhw_burn_disc lhw_play_disc
+	====	lhw_wr_hdd lhw_rd_hdd lhw_use_pda lhw_use_player lhw_use_ports
+	====	lhw_use_printer lhw_use_input lhw_use_other
+	-->
+
+	<!--
+	==== writable block devices ====
+	-->
+
+	<!-- writable pluggable volumes (incl. flashes, floppies, usb storage) -->
+
+	<match key="info.capabilities" contains="volume">
+	<match key="volume.is_disc" bool="false">
+	<match key="hwguard.detachable" bool="true">
+		<merge key="hwguard.comment" type="string">pluggable volume</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_wr_plugvol</append>
+		<merge key="hwguard.file" type="copy_property">block.device</merge>
+	</match>
+	</match>
+	</match>
+
+	<!-- writable (burnable) discs (data/video/audio) in burning drives -->
+
+	<match key="info.capabilities" contains="volume.disc">
+	<match key="hwguard.disc_can_burn" bool="true">
+	<match key="hwguard.drive_can_burn" bool="true">
+		<merge key="hwguard.comment" type="string">burnable disc in burning drive</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_burn_disc</append>
+		<merge key="hwguard.file" type="copy_property">block.device</merge>
+	</match>
+	</match>
+	</match>
+	
+	<!-- volumes on HDD -->
+
+	<match key="info.capabilities" contains="volume">
+	<match key="volume.is_disc" bool="false">
+	<match key="hwguard.detachable" bool="false">
+		<match key="volume.fstype" string="swap">
+			<merge key="hwguard.comment" type="string">HDD swap partition</merge>
+		</match>
+		<match key="volume.fstype" empty="true">
+			<merge key="hwguard.comment" type="string">HDD extended/other partition</merge>
+		</match>
+		<match key="volume.fstype" compare_ne="swap">
+		<match key="volume.fstype" empty="false">
+			<merge key="hwguard.comment" type="string">HDD partition</merge>
+			<append key="access_control.grant_group" type="strlist">lhw_wr_hdd</append>
+			<merge key="hwguard.file" type="copy_property">block.device</merge>
+		</match>
+		</match>
+	</match>
+	</match>
+	</match>
+
+	<!--
+	==== readonly block devices ====
+	-->
+
+	<!-- non-writable data discs -->
+
+	<match key="info.capabilities" contains="volume.disc">
+	<match key="hwguard.disc_can_burn" bool="false">
+	<match key="volume.disc.has_data" bool="true">
+		<merge key="hwguard.comment" type="string">read-only data disc</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_wr_plugvol</append>
+		<append key="access_control.grant_group_readonly" type="strlist">lhw_rd_plugvol</append>
+		<merge key="hwguard.file" type="copy_property">block.device</merge>
+	</match>
+	</match>
+	</match>
+
+	<!-- writable data discs in non-burning drives -->
+
+	<match key="info.capabilities" contains="volume.disc">
+	<match key="hwguard.disc_can_burn" bool="true">
+	<match key="hwguard.drive_can_burn" bool="false">
+	<match key="volume.disc.has_data" bool="true">
+		<merge key="hwguard.comment" type="string">burnable data disc in non-burning drive</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_wr_plugvol</append>
+		<append key="access_control.grant_group_readonly" type="strlist">lhw_rd_plugvol</append>
+		<merge key="hwguard.file" type="copy_property">block.device</merge>
+	</match>
+	</match>
+	</match>
+	</match>
+
+	<!-- writable pluggable volumes mounted read-only -->
+
+	<match key="info.capabilities" contains="volume">
+	<match key="hwguard.detachable" bool="true">
+		<merge key="hwguard.comment" type="string">pluggable volume</merge>
+		<append key="access_control.grant_group_readonly" type="strlist">lhw_rd_plugvol</append>
+		<merge key="hwguard.file" type="copy_property">block.device</merge>
+	</match>
+	</match>
+
+	<!-- volumes on HDD mounted read-only -->
+
+	<match key="info.capabilities" contains="volume">
+	<match key="hwguard.detachable" bool="false">
+	<match key="volume.fstype" empty="false">
+	<match key="volume.fstype" compare_ne="swap">
+		<merge key="hwguard.comment" type="string">HDD partition</merge>
+		<append key="access_control.grant_group_readonly" type="strlist">lhw_rd_hdd</append>
+		<merge key="hwguard.file" type="copy_property">block.device</merge>
+	</match>
+	</match>
+	</match>
+	</match>
+
+	<!--
+	==== non-block devices that can pull data ====
+	-->
+
+	<!-- pda -->
+
+	<match key="info.capabilities" contains="pda">
+	<match key="info.capabilities" contains_not="volume">
+		<merge key="hwguard.comment" type="string">PDA</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_pda</append>
+		<match key="pda.platform" string="palm">
+			<merge key="hwguard.file" type="copy_property">pda.palm.hotsync_interface</merge>
+		</match>
+	</match>
+	</match>
+
+	<!-- ptp cameras -->
+
+	<match key="info.capabilities" contains="camera">
+	<match key="camera.access_method" compare_ne="storage">
+		<merge key="hwguard.comment" type="string">PTP camera</merge>
+		<merge key="hwguard.file" type="string">hwguard.unknown</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_camera</append>
+	</match>
+	</match>
+
+	<match key="info.capabilities" contains="camera">
+	<match key="camera.access_method" string="libgphoto2">
+	<match key="info.linux.driver" compare_ne="usb-storage">
+		<merge key="hwguard.comment" type="string">PTP camera (libpghoto2)</merge>
+		<merge key="hwguard.file" type="string">hwguard.unknown</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_camera</append>
+	</match>
+	</match>
+	</match>
+
+	<!-- portable audio players -->
+
+	<match key="info.capabilities" contains="portable_audio_player">
+	<match key="portable_audio_player.access_method.protocols" contains_not="storage">
+		<merge key="hwguard.comment" type="string">audio player</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_player</append>
+	</match>
+	</match>
+
+	<match key="info.capabilities" contains="portable_audio_player">
+	<match key="portable_audio_player.access_method" compare_ne="storage">
+		<merge key="hwguard.comment" type="string">audio player.</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_player</append>
+	</match>
+	</match>
+
+	<!-- serial and parallel ports -->
+
+	<match key="info.capabilities" contains="serial">
+		<merge key="hwguard.comment" type="string">serial port</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_ports</append>
+		<merge key="hwguard.file" type="copy_property">serial.device</merge>
+	</match>
+
+	<match key="info.linux.driver" string="parport_pc">
+		<merge key="hwguard.comment" type="string">parallel port</merge>
+		<match key="linux.device_file" exists="true">
+			<append key="access_control.grant_group" type="strlist">lhw_use_ports</append>
+			<merge key="hwguard.file" type="copy_property">linux.device_file</merge>
+		</match>
+	</match>
+
+	<!--
+	==== non-block devices that cannot pull data ====
+	-->
+
+	<!-- audio and video (non-data) discs in non-burning devices -->
+
+	<match key="info.capabilities" contains="volume.disc">
+	<match key="hwguard.drive_can_burn" bool="false">
+	<match key="volume.disc.has_data" bool="false">
+		<merge key="hwguard.comment" type="string">playable data disc in non-burning drive</merge>
+		<append key="access_control.grant_group_readonly" type="strlist">lhw_play_disc</append>
+		<merge key="hwguard.file" type="copy_property">block.device</merge>
+	</match>
+	</match>
+	</match>
+
+	<!-- data discs mounted read-only -->
+	<!-- (see above) -->
+
+	<!-- input devices (keyboard, mouse, tablet) -->
+
+	<match key="info.capabilities" contains="input">
+	<match key="linux.subsystem" string="usb">
+		<merge key="hwguard.comment" type="string">usb input device</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_input</append>
+		<merge key="hwguard.file" type="string">hwguard.unknown</merge>
+	</match>
+	</match>
+
+	<!-- sound capture -->
+
+	<match key="info.capabilities" contains="alsa">
+	<match key="alsa.type" string="capture">
+		<merge key="hwguard.comment" type="string">sound capture</merge>
+		<merge key="hwguard.file" type="copy_property">alsa.device_file</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_input</append>
+	</match>
+	</match>
+
+	<!-- scanners -->
+
+	<match key="info.capabilities" contains="scanner">
+		<merge key="hwguard.comment" type="string">input device</merge>
+		<merge key="hwguard.file" type="string">hwguard.unknown</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_input</append>
+	</match>
+
+	<!-- webcams (video4linux) -->
+
+	<match key="info.capabilities" contains="video4linux">
+		<merge key="hwguard.comment" type="string">web camera</merge>
+		<merge key="hwguard.file" type="copy_property">video4linux.device</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_input</append>
+	</match>
+
+	<!-- printers (can print data) - pluggable printers -->
+
+	<match key="info.capabilities" contains="printer">
+		<merge key="hwguard.comment" type="string">printer</merge>
+		<merge key="hwguard.file" type="copy_property">printer.device</merge>
+		<append key="access_control.grant_group" type="strlist">lhw_use_printer</append>
+	</match>
+
+	<!--
+	==== devices that cannot be matched and recongnized ====
+	-->
+
+	<match key="hwguard.comment" exists="false">
+		<match key="info.subsystem" string="usb">
+		<match key="info.linux.driver" compare_ne="usb-storage">
+		<match key="info.linux.driver" compare_ne="hub">
+		<match key="info.product" compare_ne="USB Video Interface">
+		<match key="info.product" compare_ne="USB Audio Interface">
+		<match key="info.product" compare_ne="USB Printer Interface">
+			<merge key="hwguard.comment" type="string">unknown usb device</merge>
+			<append key="access_control.grant_group" type="strlist">lhw_use_other</append>
+		</match>
+		</match>
+		</match>
+		</match>
+		</match>
+		</match>
+
+		<match key="info.subsystem" string="ieee1394">
+			<merge key="hwguard.comment" type="string">unknown firewire device</merge>
+			<append key="access_control.grant_group" type="strlist">lhw_use_other</append>
+		</match>
+
+		<match key="info.subsystem" string="mmc">
+			<merge key="hwguard.comment" type="string">unknown mmc device</merge>
+			<append key="access_control.grant_group" type="strlist">lhw_use_other</append>
+		</match>
+
+		<match key="info.subsystem" string="bluetooth_hci">
+			<merge key="hwguard.comment" type="string">unknown bluetooth device</merge>
+			<append key="access_control.grant_group" type="strlist">lhw_use_other</append>
+		</match>
+
+		<match key="bluetooth_acl.originating_device" exists="true">
+			<merge key="hwguard.comment" type="string">unknown bluetooth device</merge>
+			<append key="access_control.grant_group" type="strlist">lhw_use_other</append>
+		</match>
+
+		<match key="bluetooth_sco.originating_device" exists="true">
+			<merge key="hwguard.comment" type="string">unknown bluetooth device</merge>
+			<append key="access_control.grant_group" type="strlist">lhw_use_other</append>
+		</match>
+	</match>
+
+	<!--
+	==== disable access to internal volumes, burnable CDs and printers from terminals ====
+	-->
+
+	<match key="/org/freedesktop/Hal/devices/computer:hwguard.is_terminal" bool="true">
+	<match key="info.capabilities" contains="volume">
+	<match key="hwguard.detachable" bool="false">
+	<match key="volume.is_mounted" bool="true">
+		<merge key="hwguard.comment" type="string">mounted HDD partition on terminal</merge>
+	</match>
+	</match>
+	</match>
+	</match>
+
+	<match key="/org/freedesktop/Hal/devices/computer:hwguard.is_terminal" bool="true">
+	<match key="info.capabilities" contains="volume">
+	<match key="hwguard.detachable" bool="false">
+	<match key="volume.is_mounted" bool="false">
+		<merge key="hwguard.comment" type="string">internal HDD disabled on terminal</merge>
+		<merge key="access_control.grant_group" type="strlist"></merge>
+		<merge key="access_control.grant_group_readonly" type="strlist"></merge>
+		<merge key="access_control.grant_group" type="strlist"></merge>
+		<merge key="access_control.grant_group_readonly" type="strlist"></merge>
+		<merge key="volume.ignore" type="bool">true</merge>
+	</match>
+	</match>
+	</match>
+	</match>
+
+	<match key="/org/freedesktop/Hal/devices/computer:hwguard.is_terminal" bool="true">
+	<match key="info.capabilities" contains="volume">
+	<match key="hwguard.disc_can_burn" bool="true">
+	<match key="hwguard.drive_can_burn" bool="true">
+		<merge key="hwguard.comment" type="string">burnable disc disabled on terminal</merge>
+		<merge key="access_control.grant_group" type="strlist"></merge>
+		<merge key="access_control.grant_group_readonly" type="strlist"></merge>
+		<merge key="access_control.grant_group" type="strlist"></merge>
+		<merge key="access_control.grant_group_readonly" type="strlist"></merge>
+		<merge key="volume.ignore" type="bool">true</merge>
+	</match>
+	</match>
+	</match>
+	</match>
+
+	<match key="/org/freedesktop/Hal/devices/computer:hwguard.is_terminal" bool="true">
+	<match key="info.capabilities" contains="printer">
+		<merge key="hwguard.comment" type="string">printer disabled on terminal</merge>
+		<merge key="access_control.grant_group" type="strlist"></merge>
+		<merge key="access_control.grant_group_readonly" type="strlist"></merge>
+		<merge key="access_control.grant_group" type="strlist"></merge>
+		<merge key="access_control.grant_group_readonly" type="strlist"></merge>
+	</match>
+	</match>
+
+	<!--
+	==== device nodes for usb devices
+	-->
+
+    <!-- device node is on a child of the main USB device -->
+	<match key="info.capabilities" contains="usbraw">
+	<match key="hwguard.file" sibling_contains="hwguard.unknown">
+		<merge key="hwguard.file" type="copy_property">usbraw.device</merge>
+	</match>
+	</match>
+
+    <!-- linux.device_file is set (e.g. device node is on the main usb device) -->
+	<match key="info.subsystem" string="usb">
+	<match key="@info.parent:linux.device_file" exists="true">
+	<match key="hwguard.file" string="hwguard.unknown">
+		<merge key="hwguard.file" type="copy_property">@info.parent:linux.device_file</merge>
+	</match>
+	</match>
+	</match>
+
+	<!--
+	==== configure access groups ====
+	-->
+
+	<match key="access_control.grant_group_readonly" exists="true">
+	<match key="access_control.grant_group" exists="false">
+		<merge key="access_control.grant_group" type="string">lwh_use_input</merge>
+	</match>
+	</match>
+
+	<match key="access_control.grant_group" exists="true">
+	<match key="info.capabilities" contains_not="access_control">
+		<append key="info.capabilities" type="strlist">access_control</append>
+		<append key="info.callouts.add" type="strlist">hal-acl-tool --add-device</append>
+		<append key="info.callouts.remove" type="strlist">hal-acl-tool --remove-device</append>
+	</match>
+	</match>
+
+	<match key="info.capabilities" contains="access_control">
+	<match key="access_control.type" exists="false">
+		<merge key="access_control.type" type="string">hwguard</merge>
+	</match>
+	</match>
+
+	<match key="info.capabilities" contains="access_control">
+	<match key="access_control.file" exists="false">
+	<match key="hwguard.file" exists="true">
+	<match key="hwguard.file" compare_ne="hwguard.unknown">
+		<merge key="access_control.file" type="copy_property">hwguard.file</merge>
+	</match>
+	</match>
+	</match>
+	</match>
+
+	<!--
+	==== manage ACLs ====
+	-->
+
+	<match key="info.capabilities" contains="access_control">
+		<append key="info.callouts.add" type="strlist">hal-acl-tool-readonly --add-device</append>
+		<append key="info.callouts.remove" type="strlist">hal-acl-tool-readonly --remove-device</append>
+	</match>
+
+	<match key="info.udi" string="/org/freedesktop/Hal/devices/computer">
+		<append key="info.callouts.add" type="strlist">hal-acl-tool-readonly --remove-all</append>
+		<append key="info.callouts.session_add" type="strlist">hal-acl-tool-readonly --reconfigure</append>
+		<append key="info.callouts.session_remove" type="strlist">hal-acl-tool-readonly --reconfigure</append>
+		<append key="info.callouts.session_active" type="strlist">hal-acl-tool-readonly --reconfigure</append>
+		<append key="info.callouts.session_inactive" type="strlist">hal-acl-tool-readonly --reconfigure</append>
+	</match>
+
+</device>
+</deviceinfo>
+
