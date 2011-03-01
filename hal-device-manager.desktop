@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=Device Manager
+Name[ru]=Управление Устройствами
+Categories=System;Application;SystemSetup;
+Icon=system-config-display.png
+Exec=/usr/bin/hal-device-manager
+Type=Application
+Terminal=false
+StartupNotify=true
+Encoding=UTF-8
