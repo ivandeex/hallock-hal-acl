@@ -133,32 +133,32 @@ static gboolean in_device_added = FALSE;
 static gboolean
 ensure_hal_ctx (void)
 {
-        gboolean ret;
+    gboolean ret;
 	DBusError error;
 
-        ret = FALSE;
-        if (hal_ctx != NULL) {
-                ret = TRUE;
-                goto out;
-        }
+    ret = FALSE;
+    if (hal_ctx != NULL) {
+        ret = TRUE;
+        goto out;
+    }
 
 	dbus_error_init (&error);
 	if ((hal_ctx = libhal_ctx_init_direct (&error)) == NULL) {
 		printf ("%d: Cannot connect to hald: %s: %s\n", getpid (), error.name, error.message);
 		LIBHAL_FREE_DBUS_ERROR (&error);
-                goto out;
+        goto out;
 	}
 
-        ret = TRUE;
+	ret = TRUE;
 
 out:
-        return ret;
+	return ret;
 }
 
 static void
 hal_acl_free (ACLCurrent *ha)
 {
-        g_free (ha->udi);
+	g_free (ha->udi);
 	g_free (ha->device);
 	g_free (ha);
 }
@@ -180,7 +180,7 @@ acl_apply_changes (GSList *new_acl_list, gboolean only_update_acllist, gboolean 
 	gboolean ret;
 	GError *error = NULL;
 	int exit_status;
-        gboolean messages_were_sent = FALSE;
+	gboolean messages_were_sent = FALSE;
 
 	ret = FALSE;
 
@@ -215,14 +215,14 @@ acl_apply_changes (GSList *new_acl_list, gboolean only_update_acllist, gboolean 
 
 		}
 
-                if (!ha->remove) {
-                        g_string_append_printf (str, 
-                                                "%s\t%s\t%c\t%d\n",
-                                                ha->device,
-                                                ha->udi,
-                                                (ha->type == HAL_ACL_UID) ? 'u' : 'g',
-                                                (ha->type == HAL_ACL_UID) ? ha->v.uid : ha->v.gid);
-                }
+		if (!ha->remove) {
+			g_string_append_printf (str, 
+									"%s\t%s\t%c\t%d\n",
+									ha->device,
+									ha->udi,
+									(ha->type == HAL_ACL_UID) ? 'u' : 'g',
+									(ha->type == HAL_ACL_UID) ? ha->v.uid : ha->v.gid);
+			}
 	}
 	new_acl_file_contents = g_string_free (str, FALSE);
 
@@ -269,85 +269,85 @@ acl_apply_changes (GSList *new_acl_list, gboolean only_update_acllist, gboolean 
 
 	/* success; now atomically set the new list */
 	g_file_set_contents (PACKAGE_LOCALSTATEDIR ACL_LIST_FILE, 
-			     new_acl_file_contents, 
-			     strlen (new_acl_file_contents),
-			     NULL);
+						new_acl_file_contents, 
+						strlen (new_acl_file_contents),
+						NULL);
 
-        /* now that we've added/removed ACL's: emit D-Bus signals.. we need to do this _after_ 
-         * having updated the ACL - to avoid possible race conditions 
-         */
-        messages_were_sent = FALSE;
+	/* now that we've added/removed ACL's: emit D-Bus signals.. we need to do this _after_ 
+	 * having updated the ACL - to avoid possible race conditions 
+	 */
+	messages_were_sent = FALSE;
 	for (i = new_acl_list; i != NULL; i = g_slist_next (i)) {
 		ACLCurrent *ha = (ACLCurrent *) i->data;
 
-                /* emit signal ACLGranted or ACLRemoved - but avoid doing it on device add because the device
-                 * object doesn't exist just yet
-                 */
-                if (ha->type == HAL_ACL_UID && ha->udi != NULL && (ha->add || ha->remove) && !in_device_added) {
-                        DBusMessage *message;
-                        DBusConnection *connection;
+		/* emit signal ACLGranted or ACLRemoved - but avoid doing it on device add because the device
+		 * object doesn't exist just yet
+		 */
+		if (ha->type == HAL_ACL_UID && ha->udi != NULL && (ha->add || ha->remove) && !in_device_added) {
+			DBusMessage *message;
+			DBusConnection *connection;
 
-                        printf ("Emmitting %s for udi %s, uid %d\n", 
-                                ha->add ? "ACLAdded" : "ACLRemoved",
-                                ha->udi,
-                                ha->v.uid);
+			printf ("Emmitting %s for udi %s, uid %d\n", 
+					ha->add ? "ACLAdded" : "ACLRemoved",
+					ha->udi,
+					ha->v.uid);
 
-                        if (!ensure_hal_ctx ()) {
+			if (!ensure_hal_ctx ()) {
 				printf ("%d: cannot get libhal context\n", getpid ());
-                                goto no_dbus_signal;
-                        }
+				goto no_dbus_signal;
+			}
 
-                        connection = libhal_ctx_get_dbus_connection (hal_ctx);
-                        if (connection == NULL) {
+			connection = libhal_ctx_get_dbus_connection (hal_ctx);
+			if (connection == NULL) {
 				printf ("%d: cannot get D-Bus connection\n", getpid());
-                                goto no_dbus_signal;
-                        }
+				goto no_dbus_signal;
+			}
 
-                        message = dbus_message_new_signal (ha->udi,
-                                                           "org.freedesktop.Hal.Device.AccessControl",
-                                                           ha->add ? "ACLAdded" : "ACLRemoved");
-                        if (message == NULL) {
+			message = dbus_message_new_signal (ha->udi,
+										"org.freedesktop.Hal.Device.AccessControl",
+										ha->add ? "ACLAdded" : "ACLRemoved");
+			if (message == NULL) {
 				printf ("%d: cannot create message\n", getpid());
-                                goto no_dbus_signal;
-                        }
+				goto no_dbus_signal;
+			}
 
-                        if (!dbus_message_append_args (message, 
-                                                       DBUS_TYPE_UINT32, &(ha->v.uid),
-                                                       DBUS_TYPE_INVALID)) {
+			if (!dbus_message_append_args (message, 
+								DBUS_TYPE_UINT32, &(ha->v.uid),
+								DBUS_TYPE_INVALID)) {
 				printf ("%d: cannot append to message\n", getpid());
-                                dbus_message_unref (message);
-                                goto no_dbus_signal;
-                        }
+				dbus_message_unref (message);
+				goto no_dbus_signal;
+			}
 
 #if READONLY
 #else
-                        if (!dbus_connection_send (connection, message, NULL)) {
+			if (!dbus_connection_send (connection, message, NULL)) {
 				printf ("%d: cannot send message\n", getpid());
-                                dbus_message_unref (message);
-                                goto no_dbus_signal;
-                        }
+				dbus_message_unref (message);
+				goto no_dbus_signal;
+			}
 #endif
-                        dbus_message_unref (message);
+			dbus_message_unref (message);
 
-                        messages_were_sent = TRUE;
-                }
+			messages_were_sent = TRUE;
+		}
 
         no_dbus_signal:
-                ;
+			;
         }
 
-        /* apparently we need to flush the signals - otherwise they
-         * may be lost because we're exiting right after this
-         */
-        if (messages_were_sent) {
-                if (ensure_hal_ctx ()) {
-                        DBusConnection *connection;
-                        connection = libhal_ctx_get_dbus_connection (hal_ctx);
-                        if (connection != NULL) {
-                                dbus_connection_flush (connection);
-                        }
-                }
-        }
+	/* apparently we need to flush the signals - otherwise they
+	 * may be lost because we're exiting right after this
+	 */
+	if (messages_were_sent) {
+		if (ensure_hal_ctx ()) {
+			DBusConnection *connection;
+			connection = libhal_ctx_get_dbus_connection (hal_ctx);
+			if (connection != NULL) {
+				dbus_connection_flush (connection);
+			}
+		}
+	}
 
 	ret = TRUE;
 
@@ -383,33 +383,33 @@ get_current_acl_list (GSList **l)
 		ACLCurrent *ha;
 		char **val;
 		char *endptr;
-                gboolean old_format = FALSE;
-                int n;
+		gboolean old_format = FALSE;
+		int n;
 
-                /* supporting the old format is important; because at hald startup we call hal-acl-tool --remove-all */
+		/* supporting the old format is important; because at hald startup we call hal-acl-tool --remove-all */
 
 		ha = g_new0 (ACLCurrent, 1);
 		val = g_strsplit(buf, "\t", 0);
 		if (g_strv_length (val) == 3) {
 			printf ("Line is from old format: '%s'\n", buf);
-                        old_format = TRUE;
+			old_format = TRUE;
 		} else {
-                        if (g_strv_length (val) != 4) {
-                                printf ("Line is malformed: '%s'\n", buf);
-                                g_strfreev (val);
-                                goto out;
-                        }
-                }
+			if (g_strv_length (val) != 4) {
+				printf ("Line is malformed: '%s'\n", buf);
+				g_strfreev (val);
+				goto out;
+			}
+		}
 
-                n = 0;
+		n = 0;
 
 		ha->device = g_strdup (val[n++]);
 
-                if (old_format) {
-                        ha->udi = NULL;
-                } else {
-                        ha->udi = g_strdup (val[n++]);
-                }
+		if (old_format) {
+			ha->udi = NULL;
+		} else {
+			ha->udi = g_strdup (val[n++]);
+		}
 
 		if (strcmp (val[n], "u") == 0) {
 			ha->type = HAL_ACL_UID;
@@ -493,13 +493,13 @@ visit_seats_and_sessions (SeatSessionVisitor visitor_cb, gpointer user_data)
 		sessions = g_strsplit (s, "\t", 0);
 		num_sessions_on_seat = g_strv_length (sessions);
 
-                seat_id = g_strdup_printf ("/org/freedesktop/ConsoleKit/%s", seat);
+		seat_id = g_strdup_printf ("/org/freedesktop/ConsoleKit/%s", seat);
 		visitor_cb (seat_id, num_sessions_on_seat, NULL, 0, FALSE, FALSE, user_data);
 
 		/* for all sessions on seat */
 		for (j = 0; sessions[j] != NULL; j++) {
 			char *session = sessions[j];
-                        char *session_id;
+			char *session_id;
 			gboolean session_is_local;
 			gboolean session_is_active;
 			uid_t session_uid;
@@ -536,18 +536,19 @@ visit_seats_and_sessions (SeatSessionVisitor visitor_cb, gpointer user_data)
 				goto out;
 			}
 
-                        session_id = g_strdup_printf ("/org/freedesktop/ConsoleKit/%s", session);
+			session_id = g_strdup_printf ("/org/freedesktop/ConsoleKit/%s", session);
 
 #if READONLY
 #else
 			visitor_cb (seat_id, num_sessions_on_seat, 
-				    session_id, session_uid, session_is_local, session_is_active, user_data);
+						session_id, session_uid, session_is_local,
+						session_is_active, user_data);
 #endif
 
-                        g_free (session_id);
+			g_free (session_id);
 		}
 		g_strfreev (sessions);
-                g_free (seat_id);
+		g_free (seat_id);
 	}
 	g_strfreev (seats);
 
@@ -562,7 +563,7 @@ typedef struct {
 	/* identifying the device */
 	char *udi;      /* HAL UDI of device */
 	char *device;   /* device file */
-        char *type;     /* type of device, access_control.type - used by PolicyKit */
+	char *type;     /* type of device, access_control.type - used by PolicyKit */
 
 	/* will be set by the visitor */
 	GSList *uid;    /* list of uid's (int) that should have access to this device */
@@ -632,29 +633,29 @@ out:
 static gid_t 
 util_name_to_gid (const char *groupname)
 {
-        int rc;
-        gid_t res;
-        char *buf = NULL;
-        unsigned int bufsize;
-        struct group gbuf;
-        struct group *gbufp;
+	int rc;
+	gid_t res;
+	char *buf = NULL;
+	unsigned int bufsize;
+	struct group gbuf;
+	struct group *gbufp;
 
-        res = (gid_t) -1;
+	res = (gid_t) -1;
 
-        bufsize = sysconf (_SC_GETGR_R_SIZE_MAX);
-        buf = g_new0 (char, bufsize);
+	bufsize = sysconf (_SC_GETGR_R_SIZE_MAX);
+	buf = g_new0 (char, bufsize);
                 
-        rc = getgrnam_r (groupname, &gbuf, buf, bufsize, &gbufp);
-        if (rc != 0 || gbufp == NULL) {
-                /*g_warning ("getgrnam_r() returned %d", rc);*/
-                goto out;
-        }
+	rc = getgrnam_r (groupname, &gbuf, buf, bufsize, &gbufp);
+	if (rc != 0 || gbufp == NULL) {
+		/*g_warning ("getgrnam_r() returned %d", rc);*/
+		goto out;
+	}
 
-        res = gbufp->gr_gid;
+	res = gbufp->gr_gid;
 
 out:
-        g_free (buf);
-        return res;
+	g_free (buf);
+	return res;
 }
 
 static void
@@ -733,12 +734,12 @@ acl_for_device_free (ACLForDevice* afd)
 
 static void 
 acl_device_added_visitor (const char *seat_id, 
-			  int num_sessions_on_seat,
-			  const char *session_id, 
-			  uid_t session_uid,
-			  gboolean session_is_local,
-			  gboolean session_is_active, 
-			  gpointer user_data)
+						int num_sessions_on_seat,
+						const char *session_id, 
+						uid_t session_uid,
+						gboolean session_is_local,
+						gboolean session_is_active, 
+						gpointer user_data)
 {
 	GSList *i;
 	GSList *afd_list = (GSList *) user_data;
@@ -760,11 +761,11 @@ acl_device_added_visitor (const char *seat_id,
 	 */
 	for (i = afd_list; i != NULL; i = g_slist_next (i)) {
 		ACLForDevice *afd = (ACLForDevice *) i->data;
-                PolKitResult pk_result;
-                PolKitSeat *pk_seat;
-                PolKitSession *pk_session;
-                PolKitAction *pk_action;
-                char *priv_name;
+		PolKitResult pk_result;
+		PolKitSeat *pk_seat;
+		PolKitSession *pk_session;
+		PolKitAction *pk_action;
+		char *priv_name;
 
 		if (session_id == NULL) {
 			/* we only grant access to sessions - someone suggested that if a device is tied
@@ -777,33 +778,33 @@ acl_device_added_visitor (const char *seat_id,
 			continue;
 		}
 
-                pk_seat = polkit_seat_new ();
-                polkit_seat_set_ck_objref (pk_seat, seat_id);
+		pk_seat = polkit_seat_new ();
+		polkit_seat_set_ck_objref (pk_seat, seat_id);
 
-                pk_session = polkit_session_new ();
-                polkit_session_set_seat (pk_session, pk_seat);
-                polkit_seat_unref (pk_seat);
-                polkit_session_set_ck_objref (pk_session, session_id);
-                polkit_session_set_uid (pk_session, session_uid);
-                polkit_session_set_ck_is_active (pk_session, session_is_active);
-                polkit_session_set_ck_is_local (pk_session, session_is_local);
-                /* TODO: FIXME: polkit_session_set_ck_remote_host (pk_session, );*/ 
+		pk_session = polkit_session_new ();
+		polkit_session_set_seat (pk_session, pk_seat);
+		polkit_seat_unref (pk_seat);
+		polkit_session_set_ck_objref (pk_session, session_id);
+		polkit_session_set_uid (pk_session, session_uid);
+		polkit_session_set_ck_is_active (pk_session, session_is_active);
+		polkit_session_set_ck_is_local (pk_session, session_is_local);
+		/* TODO: FIXME: polkit_session_set_ck_remote_host (pk_session, );*/ 
 
-                pk_action = polkit_action_new();
-                priv_name = g_strdup_printf ("org.freedesktop.hal.device-access.%s", afd->type);
-                polkit_action_set_action_id (pk_action, priv_name);
-                g_free (priv_name);
+		pk_action = polkit_action_new();
+		priv_name = g_strdup_printf ("org.freedesktop.hal.device-access.%s", afd->type);
+		polkit_action_set_action_id (pk_action, priv_name);
+		g_free (priv_name);
 
-                /* Now ask PolicyKit if the given session should have access */
-                pk_result = polkit_context_can_session_do_action (pk_context, 
-                                                                  pk_action,
-                                                                  pk_session);
-                if (pk_result == POLKIT_RESULT_YES) {
+		/* Now ask PolicyKit if the given session should have access */
+		pk_result = polkit_context_can_session_do_action (pk_context, 
+														pk_action,
+														pk_session);
+		if (pk_result == POLKIT_RESULT_YES) {
 			afd_grant_to_uid (afd, session_uid);
-                }
+		}
 
-                polkit_action_unref (pk_action);
-                polkit_session_unref (pk_session);
+		polkit_action_unref (pk_action);
+		polkit_session_unref (pk_session);
 	}
 
 }
@@ -955,7 +956,7 @@ acl_device_added (void)
 	GSList *afd_list = NULL;
 	ACLForDevice *afd = NULL;
 
-        in_device_added = TRUE;
+	in_device_added = TRUE;
 
 	/* we can avoid round-trips to the HAL daemon by using what's in the environment */
 
@@ -1057,8 +1058,8 @@ acl_reconfigure_all (void)
 
 	printf ("%d: reconfiguring all ACL's\n", getpid ());
 
-        if (!ensure_hal_ctx ())
-                goto out;
+    if (!ensure_hal_ctx ())
+        goto out;
 
 	dbus_error_init (&error);
 	if ((udis = libhal_find_device_by_capability (hal_ctx, "access_control", &num_devices, &error)) == NULL) {
@@ -1101,26 +1102,26 @@ acl_reconfigure_all (void)
 
 		if (device == NULL) {
 			printf ("%d: access_control.file not set for '%s'\n", getpid (), udis[i]);
-                        if (type != NULL)
-                                libhal_free_string (type);
-                        acl_for_device_free (afd);
-                        goto skip;
+			if (type != NULL)
+				libhal_free_string (type);
+			acl_for_device_free (afd);
+			goto skip;
 		}
 
 		if (type == NULL) {
 			printf ("%d: access_control.type not set for '%s'\n", getpid (), udis[i]);
-                        if (device != NULL)
-                                libhal_free_string (device);
-                        if (type != NULL)
-                                libhal_free_string (type);
-                        acl_for_device_free (afd);
-                        goto skip;
+			if (device != NULL)
+				libhal_free_string (device);
+			if (type != NULL)
+				libhal_free_string (type);
+			acl_for_device_free (afd);
+			goto skip;
 		}
 
-                acl_for_device_set_device (afd, device);
-                acl_for_device_set_type (afd, type);
-                afd_list = g_slist_prepend (afd_list, afd);
-        skip:
+		acl_for_device_set_device (afd, device);
+		acl_for_device_set_type (afd, type);
+		afd_list = g_slist_prepend (afd_list, afd);
+	skip:
 		libhal_free_property_set (props);
 	}
 	libhal_free_string_array (udis);
@@ -1191,8 +1192,8 @@ tryagain:
 		return FALSE;
 	}
 
-        printf ("\n");
-        printf ("****************************************************\n");
+	printf ("\n");
+	printf ("****************************************************\n");
 	printf ("%d: got lock on " PACKAGE_LOCALSTATEDIR ACL_LIST_FILE "\n", getpid ());
 	return TRUE;
 }
@@ -1200,8 +1201,8 @@ tryagain:
 static void
 acl_unlock (void)
 {
-        printf ("\n");
-        printf ("****************************************************\n");
+	printf ("\n");
+	printf ("****************************************************\n");
 	printf ("%d: releasing lock on " PACKAGE_LOCALSTATEDIR ACL_LIST_FILE "\n", getpid ());
 #if sun
 	lockf (lock_acl_fd, F_ULOCK, 0);
@@ -1215,7 +1216,7 @@ acl_unlock (void)
 int
 main (int argc, char *argv[])
 {
-        PolKitError *p_error;
+	PolKitError *p_error;
 
 	if (argc != 2) {
 		printf ("hal-acl-tool-readonly should only be invoked by hald\n");
@@ -1226,12 +1227,12 @@ main (int argc, char *argv[])
 		goto out;
 	}
 
-        p_error = NULL;
-        pk_context = polkit_context_new ();
-        if (!polkit_context_init (pk_context, &p_error)) {
-                printf ("Could not init PolicyKit context: %s\n", polkit_error_get_error_message (p_error));
-                goto out;
-        }
+	p_error = NULL;
+	pk_context = polkit_context_new ();
+	if (!polkit_context_init (pk_context, &p_error)) {
+		printf ("Could not init PolicyKit context: %s\n", polkit_error_get_error_message (p_error));
+		goto out;
+	}
 
 	if (strcmp (argv[1], "--add-device") == 0) {
 		acl_device_added ();
@@ -1248,3 +1249,4 @@ main (int argc, char *argv[])
 out:
 	return 0;
 }
+
