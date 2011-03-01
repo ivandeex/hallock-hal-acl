@@ -27,8 +27,11 @@
 
 #define READONLY 1
 #define PACKAGE_LOCALSTATEDIR "/var"
-#define ACL_LIST_FILE "/run/hald/acl-list-readonly"
 #define ACCESS_RIGHT_MODE "r"
+
+#define stringify(x) __stringify(x)
+#define __stringify(x) #x
+#define ACL_LIST_PATH PACKAGE_LOCALSTATEDIR stringify(ACL_LIST)
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -43,7 +46,10 @@
 
 #include <glib.h>
 #include <libhal.h>
+
+#if HAVE_POLKIT
 #include <polkit/polkit.h>
+#endif
 
 /* How this works (or "An introduction to this code")
  *
@@ -124,7 +130,9 @@ enum {
 	HAL_ACL_GID
 };
 
+#if HAVE_POLKIT
 static PolKitContext *pk_context = NULL;
+#endif
 
 static LibHalContext *hal_ctx = NULL;
 
@@ -268,7 +276,7 @@ acl_apply_changes (GSList *new_acl_list, gboolean only_update_acllist, gboolean 
 	}
 
 	/* success; now atomically set the new list */
-	g_file_set_contents (PACKAGE_LOCALSTATEDIR ACL_LIST_FILE, 
+	g_file_set_contents (ACL_LIST_PATH,
 						new_acl_file_contents, 
 						strlen (new_acl_file_contents),
 						NULL);
@@ -373,9 +381,9 @@ get_current_acl_list (GSList **l)
 	f = NULL;
 	ret = FALSE;
 
-	f = fopen (PACKAGE_LOCALSTATEDIR ACL_LIST_FILE, "r");
+	f = fopen (ACL_LIST_PATH, "r");
 	if (f == NULL) {
-		printf ("%d: cannot open " PACKAGE_LOCALSTATEDIR ACL_LIST_FILE "\n", getpid ());
+		printf ("%d: cannot open " ACL_LIST_PATH "\n", getpid ());
 		goto out;
 	}
 
@@ -741,6 +749,7 @@ acl_device_added_visitor (const char *seat_id,
 						gboolean session_is_active, 
 						gpointer user_data)
 {
+#if HAVE_POLKIT
 	GSList *i;
 	GSList *afd_list = (GSList *) user_data;
 
@@ -806,7 +815,7 @@ acl_device_added_visitor (const char *seat_id,
 		polkit_action_unref (pk_action);
 		polkit_session_unref (pk_session);
 	}
-
+#endif
 }
 
 static void
@@ -1171,11 +1180,11 @@ acl_lock (void)
 	if (lock_acl_fd >= 0)
 		return TRUE;
 
-	printf ("%d: attempting to get lock on " PACKAGE_LOCALSTATEDIR ACL_LIST_FILE "\n", getpid ());
+	printf ("%d: attempting to get lock on " ACL_LIST_PATH "\n", getpid ());
 
-	lock_acl_fd = open (PACKAGE_LOCALSTATEDIR ACL_LIST_FILE, O_CREAT | O_RDWR, 0644);
+	lock_acl_fd = open (ACL_LIST_PATH, O_CREAT | O_RDWR, 0644);
 	if (lock_acl_fd < 0) {
-		printf ("%d: error opening/creating " PACKAGE_LOCALSTATEDIR ACL_LIST_FILE "\n", getpid ());
+		printf ("%d: error opening/creating " ACL_LIST_PATH "\n", getpid ());
 		return FALSE;
 	}
 	
@@ -1194,7 +1203,7 @@ tryagain:
 
 	printf ("\n");
 	printf ("****************************************************\n");
-	printf ("%d: got lock on " PACKAGE_LOCALSTATEDIR ACL_LIST_FILE "\n", getpid ());
+	printf ("%d: got lock on " ACL_LIST_PATH "\n", getpid ());
 	return TRUE;
 }
 
@@ -1203,7 +1212,7 @@ acl_unlock (void)
 {
 	printf ("\n");
 	printf ("****************************************************\n");
-	printf ("%d: releasing lock on " PACKAGE_LOCALSTATEDIR ACL_LIST_FILE "\n", getpid ());
+	printf ("%d: releasing lock on " ACL_LIST_PATH "\n", getpid ());
 #if sun
 	lockf (lock_acl_fd, F_ULOCK, 0);
 #else
@@ -1216,7 +1225,9 @@ acl_unlock (void)
 int
 main (int argc, char *argv[])
 {
+#if HAVE_POLKIT
 	PolKitError *p_error;
+#endif
 
 	if (argc != 2) {
 		printf ("hal-acl-tool-readonly should only be invoked by hald\n");
@@ -1227,12 +1238,14 @@ main (int argc, char *argv[])
 		goto out;
 	}
 
+#if HAVE_POLKIT
 	p_error = NULL;
 	pk_context = polkit_context_new ();
 	if (!polkit_context_init (pk_context, &p_error)) {
 		printf ("Could not init PolicyKit context: %s\n", polkit_error_get_error_message (p_error));
 		goto out;
 	}
+#endif
 
 	if (strcmp (argv[1], "--add-device") == 0) {
 		acl_device_added ();
