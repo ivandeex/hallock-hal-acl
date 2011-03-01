@@ -84,8 +84,10 @@ main (int argc, char *argv[])
 
 	dbus_error_init (&error);
 
-#if DEBUGGING
+#if DEBUG
     fprintf(stderr, "skin=%s\n", skin);
+#endif /* DEBUGGING */
+
 	if ((hal_ctx = libhal_ctx_new ()) == NULL) {
 		fprintf (stderr, "error: libhal_ctx_new\n");
 		return 1;
@@ -104,15 +106,6 @@ main (int argc, char *argv[])
 				 "Normally this means the HAL daemon (hald) is not running or not ready.\n");
 		return 1;
 	}
-#else /* !DEBUGGING */
-	/* normal operation under hald */
-	if ((hal_ctx = libhal_ctx_init_direct (&error)) == NULL) {
-		fprintf (stderr, "%d: Cannot connect to hald: %s: %s\n",
-				getpid(), error.name, error.message);
-		LIBHAL_FREE_DBUS_ERROR (&error);
-		return 1;
-	}
-#endif /* DEBUGGING */
 
 	rc = libhal_device_set_property_string (hal_ctx, UDI, KEY, skin, &error);
 	    

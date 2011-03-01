@@ -20,13 +20,13 @@ APT_INSTALL = $(APT_GET) install -y
 HAL_INCLUDES = -I /usr/include/dbus-1.0 -I /usr/include/hal -I /usr/include/glib-2.0 -I /usr/lib/glib-2.0/include -I /usr/lib/dbus-1.0/include -I /usr/include/PolicyKit
 HAL_LIBDIR=/usr/lib/hal
 HAL_ALLCCOPTS = -Wall -O2 $(HAL_INCLUDES)
-DEBUGGING = 0
+DEBUG = 0
 
 hal-acl-tool-readonly: hal-acl-tool-readonly.c
 	gcc $(HAL_ALLCCOPTS) -ldbus-1 -lhal -lpolkit -lglib-2.0 -o $@ $<
 
 hal-addon-custom-skin: hal-addon-custom-skin.c
-	gcc $(HAL_ALLCCOPTS) -DDEBUGGING=$(DEBUGGING) -ldbus-1 -lhal -o $@ $<
+	gcc $(HAL_ALLCCOPTS) -DDEBUG=$(DEBUG) -ldbus-1 -lhal -o $@ $<
 
 prepare:
 	$(APT_INSTALL) libdbus-1-dev libglib2.0-dev libhal-dev libpolkit-dev
