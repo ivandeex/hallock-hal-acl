@@ -41,13 +41,13 @@ remake: clean compile
 install: compile
 	$(SUCP) hal-addon-custom-skin $(HAL_LIBDIR)/
 	$(SUCP) hal-acl-tool-readonly $(HAL_LIBDIR)/
-	$(SUCP) 99-hwguard-policy.fdi /etc/hal/fdi/policy/
+	$(SUCP) 99-hallock-policy.fdi /etc/hal/fdi/policy/
 	-$(SUDO) /etc/init.d/hal restart
 
 uninstall:
 	-$(SURM) $(HAL_LIBDIR)/hal-addon-custom-skin
 	-$(SURM) $(HAL_LIBDIR)/hal-acl-tool-readonly
-	-$(SURM) /etc/hal/fdi/policy/99-hwguard-policy.fdi
+	-$(SURM) /etc/hal/fdi/policy/99-hallock-policy.fdi
 	-$(SUDO) /etc/init.d/hal restart
 
 test:

@@ -34,7 +34,7 @@
 #include <libhal.h>
 
 #define UDI "/org/freedesktop/Hal/devices/computer"
-#define KEY "hwguard.skin"
+#define KEY "hallock.skin"
 
 static LibHalContext *hal_ctx;
 
